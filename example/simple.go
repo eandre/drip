@@ -1,16 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/eandre/drip"
+	"github.com/eandre/drip/event"
 )
 
 func main() {
-	runtime.LockOSThread()
+	drip.InitAll()
+	defer drip.Quit()
 
 	w, err := drip.NewWindow("MOM, GET THE CAMERA!", 500, 500)
 	if err != nil {
@@ -33,7 +35,7 @@ func main() {
 	var frames uint64 = 0
 	go frameCounter(&frames)
 
-	for {
+	for handleEvents() {
 		w.SetDrawColor(64, 64, 64, 255)
 		w.Clear()
 		w.SetDrawColor(255, 255, 255, 255)
@@ -58,5 +60,21 @@ func frameCounter(counter *uint64) {
 		time.Sleep(1 * time.Second)
 		after := atomic.LoadUint64(counter)
 		log.Println("Rendered", after-before, "fps")
+	}
+}
+
+func handleEvents() bool {
+	for {
+		switch e := event.Poll().(type) {
+		case nil:
+			return true
+
+		default:
+			fmt.Println(e, "at", e.Timestamp())
+
+		case *event.Quit:
+			fmt.Println(e, "at", e.Timestamp())
+			return false
+		}
 	}
 }
